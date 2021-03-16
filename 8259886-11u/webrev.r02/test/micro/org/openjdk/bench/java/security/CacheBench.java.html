@@ -1,0 +1,211 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>New test/micro/org/openjdk/bench/java/security/CacheBench.java</title>
+<body id="SUNWwebrev">
+<pre>
+   1 /*
+   2  * Copyright (c) 2021, Dynatrace LLC. All rights reserved.
+   3  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+   4  *
+   5  * This code is free software; you can redistribute it and/or modify it
+   6  * under the terms of the GNU General Public License version 2 only, as
+   7  * published by the Free Software Foundation.
+   8  *
+   9  * This code is distributed in the hope that it will be useful, but WITHOUT
+  10  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  11  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+  12  * version 2 for more details (a copy is included in the LICENSE file that
+  13  * accompanied this code).
+  14  *
+  15  * You should have received a copy of the GNU General Public License version
+  16  * 2 along with this work; if not, write to the Free Software Foundation,
+  17  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+  18  *
+  19  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+  20  * or visit www.oracle.com if you need additional information or have any
+  21  * questions.
+  22  */
+  23 
+  24 package org.openjdk.bench.java.security;
+  25 
+  26 import org.openjdk.jmh.annotations.Benchmark;
+  27 import org.openjdk.jmh.annotations.BenchmarkMode;
+  28 import org.openjdk.jmh.annotations.Fork;
+  29 import org.openjdk.jmh.annotations.Level;
+  30 import org.openjdk.jmh.annotations.Mode;
+  31 import org.openjdk.jmh.annotations.OutputTimeUnit;
+  32 import org.openjdk.jmh.annotations.Param;
+  33 import org.openjdk.jmh.annotations.Scope;
+  34 import org.openjdk.jmh.annotations.Setup;
+  35 import org.openjdk.jmh.annotations.State;
+  36 import org.openjdk.jmh.annotations.TearDown;
+  37 
+  38 import java.util.concurrent.TimeUnit;
+  39 import java.util.stream.IntStream;
+  40 
+  41 import sun.security.util.Cache;
+  42 
+  43 @BenchmarkMode(Mode.AverageTime)
+  44 @OutputTimeUnit(TimeUnit.NANOSECONDS)
+  45 @Fork(jvmArgsAppend = {"--add-exports", "java.base/sun.security.util=ALL-UNNAMED", "-Xmx1g"})
+  46 public class CacheBench {
+  47 
+  48     @State(Scope.Benchmark)
+  49     public static class SharedState {
+  50         Cache&lt;Integer, Integer&gt; cache;
+  51 
+  52         @Param({"20480", "204800", "5120000"})
+  53         int size;
+  54 
+  55         @Param({"86400", "0"})
+  56         int timeout;
+  57 
+  58         @Setup
+  59         public void setup() {
+  60             cache = Cache.newSoftMemoryCache(size, timeout);
+  61             IntStream.range(0, size).boxed().forEach(i -&gt; cache.put(i, i));
+  62         }
+  63     }
+  64 
+  65     @State(Scope.Thread)
+  66     public static class GetPutState {
+  67         Integer[] intArray;
+  68         int index;
+  69 
+  70         @Setup
+  71         public void setup(SharedState benchState) {
+  72             intArray = IntStream.range(0, benchState.size + 1).boxed().toArray(Integer[]::new);
+  73             index = 0;
+  74         }
+  75 
+  76         @TearDown(Level.Invocation)
+  77         public void tearDown() {
+  78             index++;
+  79             if (index &gt;= intArray.length) {
+  80                 index = 0;
+  81             }
+  82         }
+  83     }
+  84 
+  85     @Benchmark
+  86     public void put(SharedState benchState, GetPutState state) {
+  87         Integer i = state.intArray[state.index];
+  88         benchState.cache.put(i, i);
+  89     }
+  90 
+  91     @Benchmark
+  92     public Integer get(SharedState benchState, GetPutState state) {
+  93         Integer i = state.intArray[state.index];
+  94         return benchState.cache.get(i);
+  95     }
+  96 
+  97     @State(Scope.Thread)
+  98     public static class RemoveState {
+  99         Integer[] intArray;
+ 100         int index;
+ 101         SharedState benchState;
+ 102 
+ 103         @Setup
+ 104         public void setup(SharedState benchState) {
+ 105             this.benchState = benchState;
+ 106             intArray = IntStream.range(0, benchState.size).boxed().toArray(Integer[]::new);
+ 107             index = 0;
+ 108         }
+ 109 
+ 110         @TearDown(Level.Invocation)
+ 111         public void tearDown() {
+ 112             // add back removed item
+ 113             Integer i = intArray[index];
+ 114             benchState.cache.put(i, i);
+ 115 
+ 116             index++;
+ 117             if (index &gt;= intArray.length) {
+ 118                 index = 0;
+ 119             }
+ 120         }
+ 121     }
+ 122 
+ 123     @Benchmark
+ 124     public void remove(SharedState benchState, RemoveState state) {
+ 125         Integer i = state.intArray[state.index];
+ 126         benchState.cache.remove(i);
+ 127     }
+ 128 }
+</pre></body></html>
