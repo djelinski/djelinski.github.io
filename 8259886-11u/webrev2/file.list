@@ -1,2 +1,0 @@
-src/java.base/share/classes/sun/security/util/Cache.java
-test/micro/org/openjdk/bench/java/security/CacheBench.java
